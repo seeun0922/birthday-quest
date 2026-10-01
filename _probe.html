@@ -1,0 +1,78 @@
+<meta charset="utf-8">
+<title>probe</title>
+
+<!-- 개발용 진단 페이지.
+     Chrome 헤드리스는 Windows 에서 창 너비를 ~490px 아래로 못 내리기 때문에,
+     앱을 지정한 너비의 iframe 안에 띄워서 진짜 좁은 뷰포트를 만든다.
+
+       _probe.html?w=390&screen=date&seed     390px 로 띄우고 가로 넘침을 검사
+       _probe.html?w=1280&screen=summary      데스크톱 폭
+
+     chrome --headless --dump-dom 으로 보고서를 읽고,
+     chrome --headless --screenshot 으로 그대로 캡처한다. -->
+
+<style>
+  html,body{margin:0;background:#111;font:12px ui-monospace,Consolas,monospace;color:#ddd}
+  #wrap{display:flex;align-items:flex-start}
+  iframe{border:0;display:block;background:#070c20}
+  #probe-out{margin:0;padding:10px 12px;white-space:pre-wrap;line-height:1.6;
+    font:11px ui-monospace,Consolas,monospace;color:#9fe08a;background:#0b0b0b}
+  .bad{color:#ff8a7a}
+</style>
+
+<pre id="probe-out">...</pre>
+<div id="wrap"><iframe id="app-frame" title="app"></iframe></div>
+
+<script>
+  const q = new URLSearchParams(location.search);
+  const w = Number(q.get('w') || 390);
+  const h = Number(q.get('h') || 2400);
+
+  const inner = new URLSearchParams();
+  for (const [k, v] of q) if (k !== 'w' && k !== 'h') inner.append(k, v);
+
+  const frame = document.getElementById('app-frame');
+  frame.width = w;
+  frame.height = h;
+  frame.src = 'index.html' + (inner.toString() ? '?' + inner : '');
+
+  const path = (el) => {
+    const bits = [];
+    for (let n = el; n && n.nodeType === 1 && bits.length < 4; n = n.parentElement) {
+      bits.unshift(n.tagName.toLowerCase()
+        + (n.id ? '#' + n.id : '')
+        + (n.className ? '.' + String(n.className).trim().split(/\s+/).join('.') : ''));
+    }
+    return bits.join(' > ');
+  };
+
+  setTimeout(() => {
+    const out = document.getElementById('probe-out');
+    let doc;
+    try { doc = frame.contentDocument; } catch { doc = null; }
+    if (!doc) { out.textContent = 'iframe 접근 실패'; return; }
+
+    const vw = doc.documentElement.clientWidth;
+    const lines = [`viewport=${vw}  body.scrollWidth=${doc.body.scrollWidth}`];
+
+    // .sea 는 overflow:hidden 으로 .wave 를 자르므로 넘침이 아니다
+    const clipped = (el) => el.closest('.sea, [style*="overflow"]') !== null
+      || getComputedStyle(el.parentElement || el).overflow !== 'visible';
+
+    const hits = [];
+    for (const el of doc.querySelectorAll('#app *, #app')) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0) continue;
+      const over = Math.round(Math.max(r.right - vw, r.width - vw));
+      if (over > 1 && !clipped(el)) hits.push(`  +${over}px  w=${Math.round(r.width)}  ${path(el)}`);
+    }
+
+    const bad = doc.body.scrollWidth > vw + 1 || hits.length > 0;
+    lines.push(bad ? '가로 넘침 있음' : '가로 넘침 없음');
+    lines.push(...hits.slice(0, 20));
+
+    out.className = bad ? 'bad' : '';
+    out.textContent = lines.join('\n');
+    document.title = bad ? 'PROBE-BAD' : 'PROBE-OK';
+  }, 1500);
+</script>

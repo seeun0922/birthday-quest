@@ -1,0 +1,22 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Birthday Quest</title>
+<link rel="stylesheet" href="styles/quest.css">
+
+<div id="bg"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<main id="app">
+  <div id="progress-slot"></div>
+  <div id="stage"></div>
+</main>
+
+<button id="back" class="backbtn hidden" type="button" aria-label="뒤로">◀</button>
+<button id="sound" class="soundbtn" type="button" aria-label="음악 켜기/끄기">♪</button>
+<div id="chip" class="chip hidden" role="status"></div>
+
+<!-- 도망다니는 버튼이 사는 곳. position:fixed 라 문서 높이에 영향을 주지 않는다.
+     (본문 안에 두면 .screen 의 transform 애니메이션이 fixed 를 가둬버린다) -->
+<div id="roam" class="roam"></div>
+
+<script type="module" src="src/main.js"></script>
