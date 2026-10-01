@@ -63,9 +63,8 @@ function clipFrame() {
   const p = clip.play();
   if (p && p.catch) p.catch(() => {});
 
-  const frame = h('div', { class: 'clip-frame' }, clip);
-  // 영상 파일이 없으면(공개 저장소에서는 개인 영상을 뺀다) 빈 액자만 남는다.
-  // 그럴 바에는 액자째 치우는 편이 낫다.
-  clip.addEventListener('error', () => frame.remove());
-  return frame;
+  // error 이벤트로 액자를 치우려다 한 번 데였다. 자동재생이 막히거나 코덱을 못 읽어도
+  // 같은 이벤트가 뜨는데, 그걸 "파일 없음" 으로 보고 멀쩡한 영상까지 지워버렸다.
+  // 구분할 방법이 마땅치 않으므로 그냥 두는 쪽을 택한다.
+  return h('div', { class: 'clip-frame' }, clip);
 }

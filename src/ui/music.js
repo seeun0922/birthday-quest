@@ -24,6 +24,9 @@ const VOL = 0.05;       // 배경음이다. 본문을 읽는 데 방해가 되�
 
 let ctx = null, out = null;
 let playing = false, timer = 0;
+// 미리 예약해둔 오실레이터. 끌 때 이걸 전부 멈추지 않으면,
+// 다시 켰을 때 잠들어 있던 옛 음들이 새 연주와 함께 울려 겹쳐 들린다.
+let voices = [];
 
 // 저장해둔 선택. 처음 온 사람에게는 켜진 상태로 시작한다 (생일 카드니까).
 let wanted = true;
@@ -56,6 +59,9 @@ function note(freq, at, dur, type = 'square', level = 1) {
   g.connect(out);
   o.start(at);
   o.stop(at + dur + 0.02);
+
+  voices.push(o);
+  o.onended = () => { voices = voices.filter((v) => v !== o); };
 }
 
 // 한 바퀴를 통째로 미리 예약한다. setTimeout 으로 한 음씩 울리면 박자가 흔들린다.
@@ -85,13 +91,21 @@ function halt() {
   playing = false;
   clearTimeout(timer);
   timer = 0;
-  // 이미 예약된 음이 남아 있으므로 소리를 부드럽게 내린 뒤 재운다.
   if (!ctx) return;
+
+  // 소리를 짧게 내린 뒤, 예약해둔 음까지 전부 끊는다.
+  // 예전에는 ctx.suspend() 로 시계만 멈췄는데, 그러면 예약은 그대로 남아 있다가
+  // 다시 켤 때 한꺼번에 깨어나 새 연주와 겹쳤다.
   const now = ctx.currentTime;
   out.gain.cancelScheduledValues(now);
   out.gain.setValueAtTime(out.gain.value, now);
-  out.gain.linearRampToValueAtTime(0, now + 0.25);
-  setTimeout(() => { if (!playing && ctx) ctx.suspend(); }, 300);
+  out.gain.linearRampToValueAtTime(0, now + 0.12);
+
+  const dying = voices;
+  voices = [];
+  for (const o of dying) {
+    try { o.stop(now + 0.14); } catch { /* 이미 끝난 음 */ }
+  }
 }
 
 // 사람이 무언가 누른 순간에 부른다. 켜 두었다면 그때 소리가 시작된다.
